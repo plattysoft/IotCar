@@ -39,12 +39,12 @@ public class L298N implements AutoCloseable {
                 mRightMotor.backward();
                 break;
             case SPIN_RIGHT:
-                mLeftMotor.backward();
-                mRightMotor.forward();
-                break;
-            case SPIN_LEFT:
                 mLeftMotor.forward();
                 mRightMotor.backward();
+                break;
+            case SPIN_LEFT:
+                mLeftMotor.backward();
+                mRightMotor.forward();
                 break;
             case TURN_RIGHT:
                 mLeftMotor.forward();

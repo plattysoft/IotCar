@@ -19,6 +19,7 @@ import retrofit2.http.POST;
 
 public class MainActivity extends Activity {
 
+    public static final String IOT_CAR_URL = "http://192.168.42.115:8080";
     private IoTCarRemote mApiEndpoint;
 
     public interface IoTCarRemote {
@@ -41,7 +42,7 @@ public class MainActivity extends Activity {
                 .build();
 
         mApiEndpoint = new Retrofit.Builder()
-                .baseUrl("http://192.168.42.115:8080")
+                .baseUrl(IOT_CAR_URL)
                 .addConverterFactory(GsonConverterFactory.create())
                 .client(client)
                 .build()
@@ -70,6 +71,14 @@ public class MainActivity extends Activity {
 
     public void leftButtonClick(View view){
         sendCommand(IotCarCommand.LEFT);
+    }
+
+    public void rightSpinButtonClick(View view){
+        sendCommand(IotCarCommand.SPIN_RIGHT);
+    }
+
+    public void leftSpinButtonClick(View view){
+        sendCommand(IotCarCommand.SPIN_LEFT);
     }
 
     public void stopButtonClick(View view){

@@ -16,6 +16,8 @@ import com.leinardi.android.things.driver.hcsr04.Hcsr04SensorDriver;
 
 import java.io.IOException;
 import java.util.Locale;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MainActivity extends Activity implements CommandListener, SensorEventListener {
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -29,6 +31,7 @@ public class MainActivity extends Activity implements CommandListener, SensorEve
     private Hcsr04SensorDriver mProximitySensorDriver;
 
     private SensorManager mSensorManager;
+    private CarMode mCarMode = CarMode.REMOTE_CONTROLLED;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -135,6 +138,9 @@ public class MainActivity extends Activity implements CommandListener, SensorEve
 
     @Override
     public void onCommandReceived(IotCarCommand enumCommand) throws IOException {
+        if (mCarMode != CarMode.REMOTE_CONTROLLED) {
+            return;
+        }
         switch (enumCommand) {
             case LEFT:
                 mMotorController.setMode(MotorMode.TURN_LEFT);
@@ -164,12 +170,21 @@ public class MainActivity extends Activity implements CommandListener, SensorEve
     public void onSensorChanged(SensorEvent sensorEvent) {
         Log.i(TAG, String.format(Locale.getDefault(), "sensor changed: [%f]", sensorEvent.values[0]));
 
-        if (sensorEvent.values[0] < 7) {
+        if (sensorEvent.values[0] < 9) {
             try {
+                mCarMode = CarMode.AVOIDING;
                 mMotorController.setMode(MotorMode.BACKWARD);
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+        if (mCarMode == CarMode.AVOIDING && sensorEvent.values[0] > 14) {
+            try {
+                mMotorController.setMode(MotorMode.STOP);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            mCarMode = CarMode.REMOTE_CONTROLLED;
         }
     }
 

@@ -29,6 +29,13 @@
         android:layout_centerInParent="true">
 
         <Button
+            android:id="@+id/left_spin_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="leftSpinButtonClick"
+            android:text="Spin Left"/>
+
+        <Button
             android:id="@+id/left_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -48,6 +55,13 @@
             android:layout_height="wrap_content"
             android:onClick="rightButtonClick"
             android:text="Right"/>
+
+        <Button
+            android:id="@+id/right_spin_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:onClick="rightSpinButtonClick"
+            android:text="Spin Right"/>
     </LinearLayout>
 
     <Button

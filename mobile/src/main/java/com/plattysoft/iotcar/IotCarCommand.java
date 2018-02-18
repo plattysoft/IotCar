@@ -8,6 +8,8 @@ enum IotCarCommand {
     LEFT,
     STOP,
     RIGHT,
+    SPIN_LEFT,
+    SPIN_RIGHT,
     BACKWARD,
     FORWARD
 }
