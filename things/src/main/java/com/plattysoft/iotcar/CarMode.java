@@ -6,5 +6,6 @@ package com.plattysoft.iotcar;
 
 public enum CarMode {
     REMOTE_CONTROLLED,
-    AVOIDING
+    AVOIDING,
+    SELF_DRIVING
 }

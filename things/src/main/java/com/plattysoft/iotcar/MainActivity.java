@@ -4,34 +4,39 @@ import android.app.Activity;
 import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorEventListener2;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
 
-import com.google.android.things.pio.PeripheralManagerService;
+import com.leinardi.android.things.driver.hcsr04.Hcsr04;
 import com.leinardi.android.things.driver.hcsr04.Hcsr04SensorDriver;
 
 import java.io.IOException;
 import java.util.Locale;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.Random;
 
-public class MainActivity extends Activity implements CommandListener, SensorEventListener {
+public class MainActivity extends Activity implements CommandListener {
     private static final String TAG = MainActivity.class.getSimpleName();
 
     private static final String PROX_1_TRIGGER_PIN = "GPIO6_IO13";
     private static final String PROX_1_ECHO_PIN = "GPIO6_IO12";
+    public static final int MIN_AVOIDING_THRESSHOLD = 7;
 
     private L298N mMotorController;
     private ApiServer mApiServer;
 
-    private Hcsr04SensorDriver mProximitySensorDriver;
+    private Hcsr04 mProximitySensor;
 
     private SensorManager mSensorManager;
-    private CarMode mCarMode = CarMode.REMOTE_CONTROLLED;
+    private CarMode mCarMode = CarMode.SELF_DRIVING;
+    private ReadingThread mReadingThread;
+
+    private boolean mFinishing = false;
+    private int mUnderThresshold = 0;
+    private int mOverThresshold = 0;
+    private CarMode mPreviousCarMode;
+    private Random mRandom = new Random();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,11 +52,10 @@ public class MainActivity extends Activity implements CommandListener, SensorEve
             e.printStackTrace();
         }
         // Pins for the proximity sensor
-        mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        mSensorManager.registerDynamicSensorCallback(mDynamicSensorCallback);
         try {
-            mProximitySensorDriver = new Hcsr04SensorDriver(PROX_1_TRIGGER_PIN, PROX_1_ECHO_PIN);
-            mProximitySensorDriver.registerProximitySensor();
+            mProximitySensor = new Hcsr04(PROX_1_TRIGGER_PIN, PROX_1_ECHO_PIN);
+            mReadingThread = new ReadingThread();
+            mReadingThread.start();
         } catch (IOException e) {
             // couldn't configure the device...
             e.printStackTrace();
@@ -60,16 +64,6 @@ public class MainActivity extends Activity implements CommandListener, SensorEve
         mApiServer = new ApiServer(this);
     }
 
-    private SensorManager.DynamicSensorCallback mDynamicSensorCallback = new SensorManager
-            .DynamicSensorCallback() {
-        @Override
-        public void onDynamicSensorConnected(Sensor sensor) {
-            if (sensor.getType() == Sensor.TYPE_PROXIMITY) {
-                mSensorManager.registerListener(MainActivity.this,
-                        sensor, SensorManager.SENSOR_DELAY_NORMAL);
-            }
-        }
-    };
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
@@ -121,24 +115,15 @@ public class MainActivity extends Activity implements CommandListener, SensorEve
         } catch (Exception e) {
             e.printStackTrace();
         }
-        if (mProximitySensorDriver != null) {
-            mSensorManager.unregisterDynamicSensorCallback(mDynamicSensorCallback);
-            mSensorManager.unregisterListener(this);
-            mProximitySensorDriver.unregisterProximitySensor();
-            try {
-                mProximitySensorDriver.close();
-            } catch (IOException e) {
-                // error closing sensor
-                e.printStackTrace();
-            } finally {
-                mProximitySensorDriver = null;
-            }
+        if (mProximitySensor != null) {
+            mProximitySensor.close();
         }
+        mFinishing = true;
     }
 
     @Override
     public void onCommandReceived(IotCarCommand enumCommand) throws IOException {
-        if (mCarMode != CarMode.REMOTE_CONTROLLED) {
+        if (mCarMode == CarMode.AVOIDING) {
             return;
         }
         switch (enumCommand) {
@@ -166,30 +151,71 @@ public class MainActivity extends Activity implements CommandListener, SensorEve
         }
     }
 
-    @Override
-    public void onSensorChanged(SensorEvent sensorEvent) {
-        Log.i(TAG, String.format(Locale.getDefault(), "sensor changed: [%f]", sensorEvent.values[0]));
-
-        if (sensorEvent.values[0] < 9) {
+    private void onDistanceRead(float value) {
+        Log.i(TAG, String.format(Locale.getDefault(), "sensor changed: [%f]", value));
+        // TODO: Use some filtering or average, at the moment is stopping too much with false positives
+        // Maybe 3 consecutive readings under 9. Each read takes less than 10ms
+        // Same for exiting, 3 consecutive reads over 14
+        if (value < MIN_AVOIDING_THRESSHOLD) {
+            mUnderThresshold++;
+        }
+        else {
+            mUnderThresshold = 0;
+        }
+        if (mUnderThresshold >= 3 && mCarMode != CarMode.AVOIDING) {
             try {
+                mPreviousCarMode = mCarMode;
                 mCarMode = CarMode.AVOIDING;
                 mMotorController.setMode(MotorMode.BACKWARD);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-        if (mCarMode == CarMode.AVOIDING && sensorEvent.values[0] > 14) {
+
+        if (value > 14) {
+            mOverThresshold++;
+        }
+        else {
+            mOverThresshold = 0;
+        }
+        if (mCarMode == CarMode.AVOIDING && mOverThresshold >= 3) {
             try {
                 mMotorController.setMode(MotorMode.STOP);
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            mCarMode = CarMode.REMOTE_CONTROLLED;
+            mCarMode = mPreviousCarMode;
+            if (mCarMode != CarMode.REMOTE_CONTROLLED) {
+                try {
+                    spinRandomlyAndMove();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int i) {
+    private void spinRandomlyAndMove() throws IOException, InterruptedException {
+        if (mRandom.nextBoolean()) {
+            mMotorController.setMode(MotorMode.SPIN_LEFT);
+        }
+        else {
+            mMotorController.setMode(MotorMode.SPIN_RIGHT);
+        }
+        long turningTime = 200 + mRandom.nextInt(300);
+        Thread.sleep(turningTime);
+        mMotorController.setMode(MotorMode.FORWARD);
+    }
 
+
+    private class ReadingThread extends Thread {
+        @Override
+        public void run() {
+            while (!mFinishing) {
+                onDistanceRead(mProximitySensor.readDistance());
+            }
+        }
     }
 }
