@@ -22,8 +22,8 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     testImplementation 'junit:junit:4.12'
 
-    implementation 'com.leinardi.android.things:driver-hcsr04:0.1'
+    implementation 'com.leinardi.android.things:driver-hcsr04:+'
 
-    compile 'org.nanohttpd:nanohttpd:2.2.0'
+    implementation 'org.nanohttpd:nanohttpd:2.2.0'
     compileOnly 'com.google.android.things:androidthings:+'
 }

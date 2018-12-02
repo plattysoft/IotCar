@@ -9,6 +9,9 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
 
+import com.google.android.things.pio.Gpio;
+import com.google.android.things.pio.GpioCallback;
+import com.google.android.things.pio.PeripheralManager;
 import com.leinardi.android.things.driver.hcsr04.Hcsr04;
 import com.leinardi.android.things.driver.hcsr04.Hcsr04SensorDriver;
 
@@ -21,6 +24,10 @@ public class MainActivity extends Activity implements CommandListener {
 
     private static final String PROX_1_TRIGGER_PIN = "GPIO6_IO13";
     private static final String PROX_1_ECHO_PIN = "GPIO6_IO12";
+
+    private static final String LINE_DETECTOR_LEFT_PIN = "GPIO2_IO03";
+    private static final String LINE_DETECTOR_RIGHT_PIN = "GPIO1_IO10";
+
     public static final int MIN_AVOIDING_THRESSHOLD = 7;
 
     private L298N mMotorController;
@@ -37,6 +44,8 @@ public class MainActivity extends Activity implements CommandListener {
     private int mOverThresshold = 0;
     private CarMode mPreviousCarMode;
     private Random mRandom = new Random();
+    private Gpio mLineDetectorLeft;
+    private Gpio mLineDetectorRight;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +69,42 @@ public class MainActivity extends Activity implements CommandListener {
             // couldn't configure the device...
             e.printStackTrace();
         }
+        // Initialize the line detection
+        try {
+            PeripheralManager peripheralManager = PeripheralManager.getInstance();
+            mLineDetectorLeft = peripheralManager.openGpio(LINE_DETECTOR_LEFT_PIN);
+            mLineDetectorLeft.setDirection(Gpio.DIRECTION_IN);
+            mLineDetectorLeft.setEdgeTriggerType(Gpio.EDGE_BOTH);
+            mLineDetectorLeft.registerGpioCallback(new GpioCallback() {
+                @Override
+                public boolean onGpioEdge(Gpio gpio) {
+                    try {
+                        Log.e("Sensor changed", gpio.getName()+" (Left): "+gpio.getValue());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    return false;
+                }
+            });
+            mLineDetectorRight = peripheralManager.openGpio(LINE_DETECTOR_RIGHT_PIN);
+            mLineDetectorRight.setDirection(Gpio.DIRECTION_IN);
+            mLineDetectorRight.setEdgeTriggerType(Gpio.EDGE_BOTH);
+            mLineDetectorRight.registerGpioCallback(new GpioCallback() {
+                @Override
+                public boolean onGpioEdge(Gpio gpio) {
+                    try {
+                        Log.e("Sensor changed", gpio.getName()+" (Right): "+gpio.getValue());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    return false;
+                }
+            });
+        } catch (IOException e) {
+            // couldn't configure the device...
+            e.printStackTrace();
+        }
+
         // Web server to read the API calls
         mApiServer = new ApiServer(this);
     }

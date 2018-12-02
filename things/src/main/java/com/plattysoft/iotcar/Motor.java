@@ -1,7 +1,7 @@
 package com.plattysoft.iotcar;
 
 import com.google.android.things.pio.Gpio;
-import com.google.android.things.pio.PeripheralManagerService;
+import com.google.android.things.pio.PeripheralManager;
 
 import java.io.IOException;
 
@@ -14,11 +14,10 @@ public class Motor implements AutoCloseable {
     private Gpio mGpioBackward;
 
     public Motor(String gpioForward, String gpioBackward) throws IOException {
-        PeripheralManagerService service = new PeripheralManagerService();
-
-        mGpioForward = service.openGpio(gpioForward);
+        PeripheralManager peripheralManager = PeripheralManager.getInstance();
+        mGpioForward = peripheralManager.openGpio(gpioForward);
         mGpioForward.setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW);
-        mGpioBackward = service.openGpio(gpioBackward);
+        mGpioBackward = peripheralManager.openGpio(gpioBackward);
         mGpioBackward.setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW);
     }
 

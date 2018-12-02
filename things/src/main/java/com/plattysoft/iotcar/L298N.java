@@ -1,8 +1,5 @@
 package com.plattysoft.iotcar;
 
-import com.google.android.things.pio.Gpio;
-import com.google.android.things.pio.PeripheralManagerService;
-
 import java.io.IOException;
 
 /**
