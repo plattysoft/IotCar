@@ -83,7 +83,7 @@ public class MainActivity extends Activity implements CommandListener {
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-                    return false;
+                    return true;
                 }
             });
             mLineDetectorRight = peripheralManager.openGpio(LINE_DETECTOR_RIGHT_PIN);
@@ -97,7 +97,7 @@ public class MainActivity extends Activity implements CommandListener {
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-                    return false;
+                    return true;
                 }
             });
         } catch (IOException e) {
