@@ -25,8 +25,8 @@ public class MainActivity extends Activity implements CommandListener {
     private static final String PROX_1_TRIGGER_PIN = "GPIO6_IO13";
     private static final String PROX_1_ECHO_PIN = "GPIO6_IO12";
 
-    private static final String LINE_DETECTOR_LEFT_PIN = "GPIO2_IO03";
-    private static final String LINE_DETECTOR_RIGHT_PIN = "GPIO1_IO10";
+    private static final String LINE_DETECTOR_LEFT_PIN = "GPIO1_IO10";
+    private static final String LINE_DETECTOR_RIGHT_PIN = "GPIO2_IO03";
 
     public static final int MIN_AVOIDING_THRESSHOLD = 7;
 
